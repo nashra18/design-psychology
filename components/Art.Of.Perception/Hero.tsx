@@ -15,7 +15,7 @@ import { Playfair_Display, Great_Vibes, Inter } from "next/font/google";
 /* -------------------------------------------------------------------------- */
 /*  Fonts                                                                     */
 /*  Great Vibes      -> long cursive swashes for "The Art of"                 */
-/*  Playfair Display -> 900 weight, bold dramatic "Perception"                */
+/*  Playfair Display -> 900 weight, bold dramatic "Perception" + marquee      */
 /*  Inter            -> paragraph, button                                     */
 /* -------------------------------------------------------------------------- */
 const script = Great_Vibes({ subsets: ["latin"], weight: "400", display: "swap" });
@@ -27,19 +27,22 @@ const body = Inter({ subsets: ["latin"], weight: ["400", "500"], display: "swap"
 /*  ivory  #F6EEE0  page background                                           */
 /*  wine   #5A0F1E  "Perception", button                                      */
 /*  garnet #8A1C32  script line, hover                                        */
-/*  gold   #B38B4D  long flowing lines, focus                                 */
+/*  gold   #B38B4D  lines, marquee outline, button icon                       */
 /*  ink    #1E0C10  paragraph                                                 */
 /* -------------------------------------------------------------------------- */
 
 const LENS_RADIUS = 150;
 const IMAGE_SRC = "/images/Art.Of.Perception/perception-removebg-preview.png";
 const WORD = "Perception".split("");
+const MARQUEE_WORDS = ["Seeing", "Feeling", "Remembering", "Imagining"];
+
+type QuickTo = ReturnType<typeof gsap.quickTo>;
 
 const charVariants: Variants = {
-  hidden: { y: "115%", rotate: 4 },
+  hidden: { y: "60%", opacity: 0 },
   show: (i: number) => ({
     y: "0%",
-    rotate: 0,
+    opacity: 1,
     transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 1.0 + i * 0.06 },
   }),
 };
@@ -53,10 +56,89 @@ const fadeUp: Variants = {
   }),
 };
 
+/* -------------------------------------------------------------------------- */
+/*  Magnetic button with icon                                                 */
+/* -------------------------------------------------------------------------- */
+function ArrowUpRight({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M7 17L17 7M8 7h9v9" />
+    </svg>
+  );
+}
+
+function MagneticButton({ label }: { label: string }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { stiffness: 220, damping: 16, mass: 0.4 });
+  const sy = useSpring(y, { stiffness: 220, damping: 16, mass: 0.4 });
+
+  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!wrapRef.current) return;
+    const rc = wrapRef.current.getBoundingClientRect();
+    x.set((e.clientX - (rc.left + rc.width / 2)) * 0.28);
+    y.set((e.clientY - (rc.top + rc.height / 2)) * 0.28);
+  };
+  const onLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={wrapRef}
+      onPointerMove={onMove}
+      onPointerLeave={onLeave}
+      style={{ x: sx, y: sy }}
+      className="inline-block p-3 -m-3"
+    >
+      <button
+        type="button"
+        className="group relative inline-flex items-center gap-6 overflow-hidden rounded-full bg-[#5A0F1E] py-2 pl-8 pr-2 text-[15px] font-medium text-[#F6EEE0] outline-none transition-colors duration-500 hover:bg-[#8A1C32] focus-visible:ring-2 focus-visible:ring-[#B38B4D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6EEE0]"
+      >
+        {/* label slides up and is replaced by a copy */}
+        <span className="relative block overflow-hidden">
+          <span className="block transition-transform duration-500 ease-[cubic-bezier(.76,0,.24,1)] group-hover:-translate-y-full">
+            {label}
+          </span>
+          <span
+            aria-hidden
+            className="absolute left-0 top-full block transition-transform duration-500 ease-[cubic-bezier(.76,0,.24,1)] group-hover:-translate-y-full"
+          >
+            {label}
+          </span>
+        </span>
+
+        {/* icon chip: the arrow exits top-right and a new one enters from bottom-left */}
+        <span className="relative grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-[#B38B4D] text-[#5A0F1E] transition-colors duration-500 group-hover:bg-[#F6EEE0]">
+          <ArrowUpRight className="h-5 w-5 transition-transform duration-500 ease-[cubic-bezier(.76,0,.24,1)] group-hover:translate-x-[160%] group-hover:-translate-y-[160%]" />
+          <ArrowUpRight className="absolute h-5 w-5 -translate-x-[160%] translate-y-[160%] transition-transform duration-500 ease-[cubic-bezier(.76,0,.24,1)] group-hover:translate-x-0 group-hover:translate-y-0" />
+        </span>
+      </button>
+    </motion.div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Hero                                                                      */
+/* -------------------------------------------------------------------------- */
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const linesRef = useRef<SVGSVGElement>(null);
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const letterEls = useRef<(HTMLSpanElement | null)[]>([]);
+  const letterTo = useRef<({ y: QuickTo; r: QuickTo } | null)[]>([]);
 
   /* ---------------------------- Cursor lens: black and white view under the cursor ---------------------------- */
   const localX = useMotionValue(0);
@@ -68,19 +150,43 @@ export default function Hero() {
   const lensMask = useMotionTemplate`radial-gradient(circle ${r}px at ${sx}px ${sy}px, #000 0%, #000 62%, transparent 100%)`;
 
   const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "mouse" || !bgRef.current) return;
-    const rect = bgRef.current.getBoundingClientRect();
-    const scale = bgRef.current.offsetWidth / rect.width; // accounts for the GSAP scale
-    localX.set((e.clientX - rect.left) * scale);
-    localY.set((e.clientY - rect.top) * scale);
-    radius.set(LENS_RADIUS);
-  };
-  const handlePointerLeave = () => radius.set(0);
+    if (e.pointerType !== "mouse") return;
 
-  /* ---------------------------- GSAP ---------------------------- */
+    // lens
+    if (bgRef.current) {
+      const rect = bgRef.current.getBoundingClientRect();
+      const scale = bgRef.current.offsetWidth / rect.width; // accounts for the GSAP scale
+      localX.set((e.clientX - rect.left) * scale);
+      localY.set((e.clientY - rect.top) * scale);
+      radius.set(LENS_RADIUS);
+    }
+
+    // letters of "Perception" lift and lean away from the cursor
+    letterEls.current.forEach((el, i) => {
+      const t = letterTo.current[i];
+      const box = el?.parentElement;
+      if (!el || !t || !box) return;
+      const rc = box.getBoundingClientRect();
+      const dx = e.clientX - (rc.left + rc.width / 2);
+      const dy = e.clientY - (rc.top + rc.height / 2);
+      const p = Math.max(0, 1 - Math.hypot(dx, dy) / 280) ** 2;
+      t.y(-p * 48);
+      t.r(p * (dx > 0 ? -10 : 10) * Math.min(1, Math.abs(dx) / 120));
+    });
+  };
+
+  const handlePointerLeave = () => {
+    radius.set(0);
+    letterTo.current.forEach((t) => {
+      t?.y(0);
+      t?.r(0);
+    });
+  };
+
+  /* ---------------------------- GSAP: image, lines, marquee ---------------------------- */
   useEffect(() => {
-    const lines = linesRef.current?.querySelectorAll("[data-line]");
-    const star = linesRef.current?.querySelector("[data-star]");
+    const lines = sectionRef.current?.querySelectorAll("[data-line]");
+    const star = sectionRef.current?.querySelector("[data-star]");
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (reduce) {
@@ -105,7 +211,7 @@ export default function Hero() {
         }
       );
 
-      // Long gold lines draw themselves around the artwork
+      // Long gold lines draw themselves
       if (lines) {
         gsap.fromTo(
           lines,
@@ -120,6 +226,21 @@ export default function Hero() {
           { opacity: 1, scale: 1, duration: 0.8, ease: "back.out(2)", delay: 2.4 }
         );
       }
+
+      // Diagonal marquee drifts forever behind the artwork
+      if (marqueeRef.current) {
+        gsap.to(marqueeRef.current, { xPercent: -50, duration: 36, ease: "none", repeat: -1 });
+      }
+
+      // Per-letter springs for the cursor interaction
+      letterTo.current = letterEls.current.map((el) =>
+        el
+          ? {
+              y: gsap.quickTo(el, "y", { duration: 0.7, ease: "power3.out" }),
+              r: gsap.quickTo(el, "rotation", { duration: 0.7, ease: "power3.out" }),
+            }
+          : null
+      );
     }, sectionRef);
 
     return () => ctx.revert();
@@ -133,6 +254,32 @@ export default function Hero() {
       className={`${body.className} relative isolate min-h-screen w-full overflow-hidden bg-[#F6EEE0] text-[#1E0C10]`}
     >
       <h1 className="sr-only">The Art of Perception</h1>
+
+      {/* ------------------------------ Diagonal marquee (behind the artwork) ------------------------------ */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[44%] z-[5] w-[240vw] -translate-x-1/2 -translate-y-1/2 -rotate-6 select-none overflow-hidden"
+      >
+        <div ref={marqueeRef} className="flex w-max whitespace-nowrap">
+          {[0, 1].map((set) => (
+            <div key={set} className="flex shrink-0 items-center">
+              {MARQUEE_WORDS.map((word) => (
+                <div key={`${set}-${word}`} className="flex items-center">
+                  <span
+                    className={`${display.className} px-[3vw] text-[clamp(4rem,10vw,10rem)] leading-none text-transparent`}
+                    style={{ WebkitTextStroke: "1.5px #B38B4D" }}
+                  >
+                    {word}
+                  </span>
+                  <svg viewBox="0 0 24 24" className="h-[clamp(1.5rem,3vw,3rem)] w-[clamp(1.5rem,3vw,3rem)] shrink-0 text-[#B38B4D]" fill="currentColor">
+                    <path d="M12 0 L14.6 9.4 L24 12 L14.6 14.6 L12 24 L9.4 14.6 L0 12 L9.4 9.4 Z" />
+                  </svg>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ------------------------------ Background image (exact center) ------------------------------ */}
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
@@ -168,7 +315,7 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* ------------------------------ Long flowing gold lines ------------------------------ */}
+      {/* ------------------------------ Long flowing lines ------------------------------ */}
       <svg
         ref={linesRef}
         aria-hidden
@@ -177,7 +324,6 @@ export default function Hero() {
         className="pointer-events-none absolute inset-0 z-[15] h-full w-full"
         fill="none"
       >
-        {/* wide orbit around the artwork */}
         <path
           data-line
           d="M180 450 A540 290 0 1 1 1260 450 A540 290 0 1 1 180 450"
@@ -189,7 +335,6 @@ export default function Hero() {
           strokeDasharray={1}
           style={{ strokeDashoffset: 1 }}
         />
-        {/* second, thinner orbit crossing the first */}
         <path
           data-line
           d="M260 450 A470 250 0 1 1 1180 450 A470 250 0 1 1 260 450"
@@ -202,21 +347,9 @@ export default function Hero() {
           strokeDasharray={1}
           style={{ strokeDashoffset: 1 }}
         />
-        {/* long swooping line that runs behind the big word */}
         <path
           data-line
-          d="M-80 790 C 240 650, 480 890, 800 770 S 1280 650, 1520 750"
-          stroke="#B38B4D"
-          strokeWidth="1.4"
-          vectorEffect="non-scaling-stroke"
-          pathLength={1}
-          strokeDasharray={1}
-          style={{ strokeDashoffset: 1 }}
-        />
-        {/* thin vertical line ending in a small star, echoing the artwork */}
-        <path
-          data-line
-          d="M1130 -10 L1130 330"
+          d="M1250 -10 L1250 188"
           stroke="#B38B4D"
           strokeWidth="1"
           vectorEffect="non-scaling-stroke"
@@ -226,83 +359,112 @@ export default function Hero() {
         />
         <path
           data-star
-          d="M1130 322 L1134 336 L1148 340 L1134 344 L1130 358 L1126 344 L1112 340 L1126 336 Z"
+          d="M1250 182 L1254 196 L1268 200 L1254 204 L1250 218 L1246 204 L1232 200 L1246 196 Z"
           fill="#B38B4D"
           style={{ opacity: 0 }}
         />
       </svg>
 
-      {/* ------------------------------ One lockup: heading + paragraph + button ------------------------------ */}
-      <div className="absolute inset-x-0 bottom-2 z-30 flex flex-col px-6 md:bottom-4 md:px-12">
-        {/* Row 1: cursive line on the left, paragraph and button on the right */}
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+      {/* ------------------------------ Top left: cursive line with a drawn underline ------------------------------ */}
+      <div className="pointer-events-none absolute left-6 top-6 z-30 md:left-12 md:top-8">
+        <motion.span
+          aria-hidden
+          initial={{ clipPath: "inset(-30% 100% -30% -10%)" }}
+          animate={{ clipPath: "inset(-30% -10% -30% -10%)" }}
+          transition={{ duration: 1.6, ease: [0.65, 0, 0.35, 1], delay: 0.4 }}
+          className={`${script.className} block -rotate-3 select-none text-[clamp(4rem,min(12vw,17vh),11rem)] leading-[0.9] text-[#8A1C32]`}
+          style={{ WebkitTextStroke: "2px #8A1C32" }}
+        >
+          The Art of
+        </motion.span>
+        <svg
+          aria-hidden
+          viewBox="0 0 600 24"
+          preserveAspectRatio="none"
+          className="-mt-1 h-4 w-[80%]"
+          fill="none"
+        >
+          <path
+            data-line
+            d="M4 18 C 90 4, 210 24, 340 10 S 520 6, 596 16"
+            stroke="#B38B4D"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+            pathLength={1}
+            strokeDasharray={1}
+            style={{ strokeDashoffset: 1 }}
+          />
+        </svg>
+      </div>
+
+      {/* ------------------------------ Left middle: scroll cue ------------------------------ */}
+      <motion.div
+        custom={2.4}
+        variants={fadeUp}
+        initial="hidden"
+        animate="show"
+        className="absolute left-6 top-1/2 z-30 hidden -translate-y-1/2 flex-col items-center gap-4 md:flex md:left-12"
+      >
+        <span className="text-sm tracking-wide text-[#1E0C10]/70 [writing-mode:vertical-rl]">Scroll</span>
+        <span className="relative block h-16 w-px overflow-hidden bg-[#B38B4D]/40">
           <motion.span
-            aria-hidden
-            initial={{ clipPath: "inset(-30% 100% -30% -10%)" }}
-            animate={{ clipPath: "inset(-30% -10% -30% -10%)" }}
-            transition={{ duration: 1.6, ease: [0.65, 0, 0.35, 1], delay: 0.4 }}
-            className={`${script.className} pointer-events-none relative z-10 -mb-[0.1em] block -rotate-3 select-none text-[clamp(3.6rem,min(11vw,16vh),9.5rem)] leading-[0.9] text-[#8A1C32] sm:-mb-[0.22em]`}
-            style={{ WebkitTextStroke: "2px #8A1C32" }}
-          >
-            The Art of
-          </motion.span>
+            className="absolute left-0 top-0 block h-5 w-px bg-[#8A1C32]"
+            animate={{ y: [-20, 64] }}
+            transition={{ duration: 1.8, ease: "easeInOut", repeat: Infinity }}
+          />
+        </span>
+      </motion.div>
 
-          <div className="mb-3 flex max-w-[19rem] flex-col items-start sm:mb-5">
-            <motion.p
-              custom={1.9}
-              variants={fadeUp}
-              initial="hidden"
-              animate="show"
-              className="hidden text-[15px] leading-relaxed text-[#1E0C10]/80 sm:block"
-            >
-              Two people can look at the same face and see two different
-              stories. What we notice first is shaped by memory, light and
-              mood. This is a look at how seeing becomes understanding.
-            </motion.p>
+      {/* ------------------------------ Right middle: paragraph + button ------------------------------ */}
+      <div className="absolute bottom-[24vw] right-6 z-30 flex max-w-[19rem] flex-col items-start gap-7 md:bottom-auto md:right-12 md:top-1/2 md:-translate-y-1/2">
+        <motion.p
+          custom={1.9}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="hidden text-[15px] leading-relaxed text-[#1E0C10]/80 md:block"
+        >
+          Two people can look at the same face and see two different stories.
+          What we notice first is shaped by memory, light and mood. This is a
+          look at how seeing becomes understanding.
+        </motion.p>
 
-            <motion.button
-              custom={2.1}
-              variants={fadeUp}
-              initial="hidden"
-              animate="show"
-              whileHover="hover"
-              whileTap={{ scale: 0.97 }}
-              type="button"
-              className="group relative overflow-hidden rounded-full border border-[#5A0F1E] bg-[#5A0F1E] px-9 py-4 text-sm font-medium tracking-wide text-[#F6EEE0] outline-none focus-visible:ring-2 focus-visible:ring-[#B38B4D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6EEE0] sm:mt-5"
-            >
+        <motion.div custom={2.1} variants={fadeUp} initial="hidden" animate="show">
+          <MagneticButton label="In Detail" />
+        </motion.div>
+      </div>
+
+      {/* ------------------------------ Bottom: the big word, edge to edge ------------------------------ */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex select-none justify-center md:bottom-3"
+      >
+        <span
+          className={`${display.className} flex text-[clamp(2.8rem,min(15vw,24vh),15rem)] leading-[0.95] tracking-[-0.04em] text-[#5A0F1E]`}
+          style={{ WebkitTextStroke: "3px #5A0F1E" }}
+        >
+          {WORD.map((ch, i) => (
+            <span key={i} className="block px-[0.01em] pb-[0.14em] pt-[0.05em]">
               <motion.span
-                aria-hidden
-                className="absolute inset-0 origin-bottom bg-[#8A1C32]"
-                initial={{ scaleY: 0 }}
-                variants={{ hover: { scaleY: 1 } }}
-                transition={{ duration: 0.45, ease: [0.76, 0, 0.24, 1] }}
-              />
-              <span className="relative z-10">In Detail</span>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Row 2: the big word, full width */}
-        <div aria-hidden className="pointer-events-none flex select-none justify-center">
-          <span
-            className={`${display.className} flex text-[clamp(2.8rem,min(13.5vw,20vh),13rem)] leading-[0.95] tracking-[-0.04em] text-[#5A0F1E]`}
-            style={{ WebkitTextStroke: "3px #5A0F1E" }}
-          >
-            {WORD.map((ch, i) => (
-              <span key={i} className="block overflow-hidden px-[0.02em] pb-[0.14em] pt-[0.05em]">
-                <motion.span
-                  custom={i}
-                  variants={charVariants}
-                  initial="hidden"
-                  animate="show"
-                  className="block"
+                custom={i}
+                variants={charVariants}
+                initial="hidden"
+                animate="show"
+                className="block"
+              >
+                <span
+                  ref={(el) => {
+                    letterEls.current[i] = el;
+                  }}
+                  className="block will-change-transform"
                 >
                   {ch}
-                </motion.span>
-              </span>
-            ))}
-          </span>
-        </div>
+                </span>
+              </motion.span>
+            </span>
+          ))}
+        </span>
       </div>
     </section>
   );
