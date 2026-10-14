@@ -138,7 +138,7 @@ export default function Hero() {
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
         <div
           ref={bgRef}
-          className="relative aspect-[3/2] w-[min(86vw,92vh)] will-change-transform"
+          className="relative aspect-[3/2] w-[min(86vw,84vh)] will-change-transform"
           style={{ opacity: 0 }}
         >
           <Image
@@ -146,7 +146,7 @@ export default function Hero() {
             alt="Collage of a woman's profile, a cream lily, burgundy petals and a gold arc"
             fill
             priority
-            sizes="(max-width: 768px) 86vw, 92vh"
+            sizes="(max-width: 768px) 86vw, 84vh"
             className="object-contain"
           />
 
@@ -160,7 +160,7 @@ export default function Hero() {
               src={IMAGE_SRC}
               alt=""
               fill
-              sizes="(max-width: 768px) 86vw, 92vh"
+              sizes="(max-width: 768px) 86vw, 84vh"
               className="object-contain"
               style={{ filter: "grayscale(1) contrast(1.3) brightness(0.95)" }}
             />
@@ -232,75 +232,77 @@ export default function Hero() {
         />
       </svg>
 
-      {/* ------------------------------ Lockup: script line, paragraph and button together ------------------------------ */}
-      <div className="absolute left-6 top-8 z-30 flex max-w-[min(26rem,calc(100vw-3rem))] flex-col items-start md:left-12 md:top-10">
-        <motion.span
-          aria-hidden
-          initial={{ clipPath: "inset(-30% 100% -30% -10%)" }}
-          animate={{ clipPath: "inset(-30% -10% -30% -10%)" }}
-          transition={{ duration: 1.6, ease: [0.65, 0, 0.35, 1], delay: 0.4 }}
-          className={`${script.className} block -rotate-3 text-[clamp(4rem,min(12vw,17vh),10.5rem)] leading-[0.9] text-[#8A1C32]`}
-          style={{ WebkitTextStroke: "2px #8A1C32" }}
-        >
-          The Art of
-        </motion.span>
-
-        <motion.p
-          custom={1.9}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="mt-4 hidden max-w-sm text-[15px] leading-relaxed text-[#1E0C10]/80 sm:block"
-        >
-          Two people can look at the same face and see two different stories.
-          What we notice first is shaped by memory, light and mood. This is a
-          look at how seeing becomes understanding.
-        </motion.p>
-
-        <motion.button
-          custom={2.1}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          whileHover="hover"
-          whileTap={{ scale: 0.97 }}
-          type="button"
-          className="group relative mt-6 overflow-hidden rounded-full border border-[#5A0F1E] bg-[#5A0F1E] px-9 py-4 text-sm font-medium tracking-wide text-[#F6EEE0] outline-none focus-visible:ring-2 focus-visible:ring-[#B38B4D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6EEE0]"
-        >
+      {/* ------------------------------ One lockup: heading + paragraph + button ------------------------------ */}
+      <div className="absolute inset-x-0 bottom-2 z-30 flex flex-col px-6 md:bottom-4 md:px-12">
+        {/* Row 1: cursive line on the left, paragraph and button on the right */}
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <motion.span
             aria-hidden
-            className="absolute inset-0 origin-bottom bg-[#8A1C32]"
-            initial={{ scaleY: 0 }}
-            variants={{ hover: { scaleY: 1 } }}
-            transition={{ duration: 0.45, ease: [0.76, 0, 0.24, 1] }}
-          />
-          <span className="relative z-10">In Detail</span>
-        </motion.button>
-      </div>
+            initial={{ clipPath: "inset(-30% 100% -30% -10%)" }}
+            animate={{ clipPath: "inset(-30% -10% -30% -10%)" }}
+            transition={{ duration: 1.6, ease: [0.65, 0, 0.35, 1], delay: 0.4 }}
+            className={`${script.className} pointer-events-none relative z-10 -mb-[0.1em] block -rotate-3 select-none text-[clamp(3.6rem,min(11vw,16vh),9.5rem)] leading-[0.9] text-[#8A1C32] sm:-mb-[0.22em]`}
+            style={{ WebkitTextStroke: "2px #8A1C32" }}
+          >
+            The Art of
+          </motion.span>
 
-      {/* ------------------------------ The big word, anchored to the bottom edge ------------------------------ */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex select-none justify-center md:bottom-4"
-      >
-        <span
-          className={`${display.className} flex text-[clamp(2.8rem,min(13.5vw,22vh),13rem)] leading-[0.95] tracking-[-0.04em] text-[#5A0F1E]`}
-          style={{ WebkitTextStroke: "3px #5A0F1E" }}
-        >
-          {WORD.map((ch, i) => (
-            <span key={i} className="block overflow-hidden px-[0.02em] pb-[0.14em] pt-[0.05em]">
+          <div className="mb-3 flex max-w-[19rem] flex-col items-start sm:mb-5">
+            <motion.p
+              custom={1.9}
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              className="hidden text-[15px] leading-relaxed text-[#1E0C10]/80 sm:block"
+            >
+              Two people can look at the same face and see two different
+              stories. What we notice first is shaped by memory, light and
+              mood. This is a look at how seeing becomes understanding.
+            </motion.p>
+
+            <motion.button
+              custom={2.1}
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              whileHover="hover"
+              whileTap={{ scale: 0.97 }}
+              type="button"
+              className="group relative overflow-hidden rounded-full border border-[#5A0F1E] bg-[#5A0F1E] px-9 py-4 text-sm font-medium tracking-wide text-[#F6EEE0] outline-none focus-visible:ring-2 focus-visible:ring-[#B38B4D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6EEE0] sm:mt-5"
+            >
               <motion.span
-                custom={i}
-                variants={charVariants}
-                initial="hidden"
-                animate="show"
-                className="block"
-              >
-                {ch}
-              </motion.span>
-            </span>
-          ))}
-        </span>
+                aria-hidden
+                className="absolute inset-0 origin-bottom bg-[#8A1C32]"
+                initial={{ scaleY: 0 }}
+                variants={{ hover: { scaleY: 1 } }}
+                transition={{ duration: 0.45, ease: [0.76, 0, 0.24, 1] }}
+              />
+              <span className="relative z-10">In Detail</span>
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Row 2: the big word, full width */}
+        <div aria-hidden className="pointer-events-none flex select-none justify-center">
+          <span
+            className={`${display.className} flex text-[clamp(2.8rem,min(13.5vw,20vh),13rem)] leading-[0.95] tracking-[-0.04em] text-[#5A0F1E]`}
+            style={{ WebkitTextStroke: "3px #5A0F1E" }}
+          >
+            {WORD.map((ch, i) => (
+              <span key={i} className="block overflow-hidden px-[0.02em] pb-[0.14em] pt-[0.05em]">
+                <motion.span
+                  custom={i}
+                  variants={charVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="block"
+                >
+                  {ch}
+                </motion.span>
+              </span>
+            ))}
+          </span>
+        </div>
       </div>
     </section>
   );
